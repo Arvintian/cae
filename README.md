@@ -15,7 +15,7 @@ This paltform is a container app engine base on [docker](https://github.com/moby
 docker-compose up -d
 ```
 
-Open `http://localhost:5000` in your browser. Default auth user and password is `traefik:traefik`.
+Open `http://localhost:5000` in your browser. Default auth user and password is `traefik`.
 
 Create instance you can use the [base-image](https://github.com/Arvintian/base-image), e.g `arvintian/base-image:1.3.2`.
 
