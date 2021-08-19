@@ -7,3 +7,12 @@ This paltform is a container app engine base on [docker](https://github.com/moby
 - Unified ssh entrance to container instance.
 - Container instance and image manage.
 - L7 ingress rule manage.
+
+
+## Quickstart
+
+```
+docker-compose up -d
+```
+
+Open `http://localhost:5000` in your browser. Create instance you can use the [base-image](https://github.com/Arvintian/base-image).
