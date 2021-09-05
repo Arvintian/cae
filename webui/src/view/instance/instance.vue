@@ -25,7 +25,9 @@
                     <Input v-model.trim="editForm.desc"></Input>
                 </Form-item>
                 <Form-item v-if="editForm.action === 'add'" label="镜像：" prop="image" :rules="editFormRule.image">
-                    <Input v-model.trim="editForm.image"></Input>
+                    <Select v-model="editForm.image">
+                        <Option v-for="item in imageList" :value="item.name+':'+item.tag" :key="item.name+':'+item.tag">{{ item.name }}:{{item.tag}}</Option>
+                    </Select>
                 </Form-item>
                 <Form-item label="授权秘钥：" prop="authKeys"  :rules="editFormRule.authKeys">
                     <Input v-model.trim="editForm.authKeys" type="textarea" :rows="8"></Input>
@@ -70,6 +72,7 @@ import {
     imageInstance,
     delInstance,
 } from "@/api/instance";
+import { getImageList } from "@/api/image";
 import { nCopy } from "@/libs/util";
 import { NAction } from "_c/cae";
 
@@ -329,6 +332,7 @@ export default {
                 },
             ],
             instanceList: [],
+            imageList: [],
             //表单
             editModalVisible: false,
             editSubmitBtnLoading: false,
@@ -359,10 +363,29 @@ export default {
                     this.$Message.info(`加载失败,${err}`);
                 });
         },
+
+        loadImageList(msg = false) {
+            getImageList()
+                .then((res) => {
+                    let list = [];
+                    if (res.data.code == 200) {
+                        list = res.data.result;
+                    }
+                    this.imageList = list;
+                    if (msg) {
+                        this.$Message.info(`成功加载${list.length}条记录`);
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
+                    this.$Message.info(`加载失败,${err}`);
+                });
+        },
+
         closeEditFormModal() {
             this.$refs["editForm"].resetFields();
             this.editModalVisible = false;
-            this.editFormRule = addFormRule
+            this.editFormRule = addFormRule;
         },
         submitEditForm() {
             this.editSubmitBtnLoading = true;
@@ -548,6 +571,7 @@ export default {
     },
     mounted() {
         this.loadInstanceList(true);
+        this.loadImageList(false);
     },
 };
 </script>

@@ -18,3 +18,14 @@ export const delImage = (name, tag) => {
         }
     })
 }
+
+export const addImage = (name, tag) => {
+    return axios.request({
+        url: `/api/image/create`,
+        method: "post",
+        data: {
+            "repository": name,
+            "tag": tag
+        }
+    })
+}

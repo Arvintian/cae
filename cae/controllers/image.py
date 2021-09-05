@@ -1,4 +1,3 @@
-from re import I
 from typing import List
 from madara.wrappers import Request
 from madara.blueprints import Blueprint
@@ -7,7 +6,6 @@ from docker.errors import ImageNotFound
 from cae.services import docker_service
 from cae.repositorys.validation import use_args
 from webargs import fields
-from io import BytesIO
 import threading
 from pretty_logging import pretty_logger
 import traceback
