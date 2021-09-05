@@ -19,9 +19,7 @@ dc = docker_service.get_docker_client()
 
 @bp_image.route("/list", methods=["GET"])
 def list_image(request: Request):
-    image_filters = {
-        "label": ["cae.image=true"]
-    }
+    image_filters = {}  # list all images
     images: List[Image] = dc.images.list(filters=image_filters)
     result = []
     for image in images:
@@ -30,6 +28,7 @@ def list_image(request: Request):
             result.append({
                 "name": name,
                 "tag": the_tag,
+                "id": image.id,
                 "comment": image.attrs.get("Comment"),
                 "created": image.attrs.get("Created")
             })
@@ -55,21 +54,14 @@ def create_image(request: Request, json_args: dict):
     if exist_image:
         raise Exception("image exist")
 
-    dockerfile_template = """
-FROM {}
-LABEL "cae.image"="true"
-"""
-
-    def build_image():
+    def pull_image():
         try:
-            dockerfile = dockerfile_template.format(image_name)
-            build_fd = BytesIO(dockerfile.encode('utf-8'))
-            dc.images.build(fileobj=build_fd, tag=image_name)
-            pretty_logger.info("success build image {}".format(image_name))
+            dc.images.pull(json_args.get("repository"), json_args.get("tag"))
+            pretty_logger.info("success pull image {}".format(image_name))
         except Exception as e:
             pretty_logger.error(traceback.format_exc())
 
-    threading.Thread(target=build_image, daemon=True).start()
+    threading.Thread(target=pull_image, daemon=True).start()
 
     return {
         "code": 200,

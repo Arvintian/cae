@@ -131,11 +131,15 @@ class InteractiveServer:
                     self.exec(container)
             except socket.error as e:
                 pretty_logger.error("Socket error: {}".format(e))
+            except Exception as e:
+                pretty_logger.error(traceback.format_exc())
         elif is_have_sshd and kind == "direct-tcpip":
             try:
                 self.tunnel(container)
             except socket.error as e:
                 pretty_logger.error("Socket error: {}".format(e))
+            except Exception as e:
+                pretty_logger.error(traceback.format_exc())
         else:
             pretty_logger.error("not support interact kind {}".format(kind))
 
