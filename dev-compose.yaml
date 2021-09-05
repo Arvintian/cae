@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   api:
-    image: arvintian/cae-api:1.0.2
+    image: arvintian/cae-api:1.1.0
     logging:
       driver: "json-file"
       options:
@@ -36,7 +36,7 @@ services:
     links:
       - redis
   ui:
-    image: arvintian/cae-ui:1.0.0
+    image: arvintian/cae-ui:1.0.1
     logging:
       driver: "json-file"
       options:

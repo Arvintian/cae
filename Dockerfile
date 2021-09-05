@@ -1,4 +1,4 @@
-FROM arvintian/base-image:1.3.1
+FROM arvintian/base-image:1.3.2
 
 RUN mkdir -p /app /channel
 WORKDIR /app
