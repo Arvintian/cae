@@ -8,6 +8,7 @@ from cae.models import instance
 from pretty_logging import pretty_logger
 from .proxy import ProxyServer
 from .direct import DirectServer
+from .exec import ExecServer
 from typing import List
 import shutil
 import tempfile
@@ -49,6 +50,26 @@ class InteractiveServer:
         forwarder = ProxyServer(self.client, asset, system_user)
         forwarder.proxy()
 
+    def exec(self, container: Container):
+        """
+        Proxy exec
+        """
+        instance_info = instance.inspec_to_info(container)
+        asset = ObjDict()
+        asset.update({
+            "ip": instance_info.get("IP"),
+            "ssh_port": 22,
+        })
+        system_user = ObjDict()
+        system_user.update({
+            "username": self.client.user.get("username"),
+            "password": None,
+            "private_key": paramiko.RSAKey.from_private_key_file(filename=config["HOST_PRIVATE_KEY"]),
+            "protocol": "ssh"
+        })
+        forwarder = ExecServer(self.client, asset, system_user, container)
+        forwarder.proxy()
+
     def tunnel(self, container: Container):
         """
         Proxy tunnel
@@ -87,13 +108,16 @@ class InteractiveServer:
                 raise Exception("not found instance {}".format(instance_id))
             container: Container = cs[0]
 
-            public_keys = "\n".join(self.client.user.get("auth_keys", []))
-            with open(config["HOST_PUBLIC_KEY"]) as fd:
-                public_keys = "{}\n{}\n".format(public_keys, fd.read())
+            is_have_sshd = check_container_sshd(container)
 
-            username = self.client.user.get("username")
+            if is_have_sshd:
+                public_keys = "\n".join(self.client.user.get("auth_keys", []))
+                with open(config["HOST_PUBLIC_KEY"]) as fd:
+                    public_keys = "{}\n{}\n".format(public_keys, fd.read())
 
-            ensure_public_key(container, username, public_keys)
+                username = self.client.user.get("username")
+                ensure_public_key(container, username, public_keys)
+
         except Exception as e:
             pretty_logger.error(traceback.format_exc())
             self.close()
@@ -101,10 +125,13 @@ class InteractiveServer:
 
         if kind == "session":
             try:
-                self.proxy(container)
+                if is_have_sshd:
+                    self.proxy(container)
+                else:
+                    self.exec(container)
             except socket.error as e:
                 pretty_logger.error("Socket error: {}".format(e))
-        elif kind == "direct-tcpip":
+        elif is_have_sshd and kind == "direct-tcpip":
             try:
                 self.tunnel(container)
             except socket.error as e:
@@ -145,6 +172,18 @@ def ensure_public_key(container: Container, username, public_key):
     current_bts.close()
     out_bts.close()
     shutil.rmtree(data_dir)
+
+
+def check_container_sshd(container: Container) -> bool:
+    try:
+        bts, stat = container.get_archive("/var/run/sshd.pid")
+        pretty_logger.info("{} sshd.pid {}".format(container.id, stat))
+        if stat.get("size") < 1:
+            raise Exception("container sshd.pid file if none {}".format(container.id))
+        return True
+    except Exception as e:
+        pretty_logger.error("{}".format(e))
+        return False
 
 
 def get_user_info(container: Container, username) -> dict:
