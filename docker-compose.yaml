@@ -67,6 +67,8 @@ services:
       - --api.dashboard=true
       - --entrypoints.http80=true
       - --entrypoints.http80.address=:80
+      - --entrypoints.http80.proxyProtocol.trustedIPs=0.0.0.0/0
+      - --entrypoints.http80.forwardedHeaders.trustedIPs=0.0.0.0/0
       - --entrypoints.cae=true
       - --entrypoints.cae.address=:5000
       - --entrypoints.traefik=true
