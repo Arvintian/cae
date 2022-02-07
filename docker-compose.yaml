@@ -54,7 +54,7 @@ services:
     depends_on:
       - api
   traefik:
-    image: traefik:v2.4.8
+    image: traefik:v2.5.7
     logging:
       driver: "json-file"
       options:
