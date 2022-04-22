@@ -109,7 +109,7 @@ class SSHInterface(paramiko.ServerInterface):
         return False
 
     def check_channel_exec_request(self, channel, command):
-        pretty_logger.info.debug("Check channel exec request:  `%s`" % command)
+        pretty_logger.info("Check channel exec request:  `%s`" % command)
         client = self.connection.get_client(channel)
         client.request.type = 'exec'
         client.request.meta.update({
