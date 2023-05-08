@@ -1,6 +1,6 @@
 REGISTRY = arvintian
 PROJECT = cae
-API_VERSION = 1.1.0
+API_VERSION = 1.2.0
 UI_VERSION = 1.0.1
 
 all: api ui
