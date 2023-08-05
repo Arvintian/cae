@@ -1,10 +1,10 @@
-FROM arvintian/base-image:1.3.2
+FROM python:3.9.17-bullseye
 
 RUN mkdir -p /app /channel
 WORKDIR /app
 ADD requirements.txt /app/
-RUN pip install -r /app/requirements.txt
+RUN pip install -U pip && pip install -r /app/requirements.txt
 COPY cae /app/cae
 ADD main.py /app/
 
-ENTRYPOINT ["dumb-init","python","/app/main.py"]
+ENTRYPOINT ["python","/app/main.py"]

@@ -1,22 +1,16 @@
 <template>
     <div>
         <Card>
-            <Tables
-                ref="tables"
-                searchable
-                border
-                search-place="top"
-                v-model="instanceList"
-                :columns="columns"
-                :pageSize="pageSize"
-            >
-            <span slot="handleTopButtons">
-                <Button type="success" class="top-btn" @click="openAddModal()">创建实例</Button>
-                <Button type="primary" class="top-btn" @click="loadInstanceList(true)">刷新</Button>
-            </span>
+            <Tables ref="tables" searchable border search-place="top" v-model="instanceList" :columns="columns"
+                :pageSize="pageSize">
+                <span slot="handleTopButtons">
+                    <Button type="success" class="top-btn" @click="openAddModal()">创建实例</Button>
+                    <Button type="primary" class="top-btn" @click="loadInstanceList(true)">刷新</Button>
+                </span>
             </Tables>
         </Card>
-        <Modal v-if="editForm" v-model="editModalVisible" :title="editForm.action === 'add' ? '创建实例' : '更新实例'" :mask-closable="false" @on-cancel="closeEditFormModal()" width="760">
+        <Modal v-if="editForm" v-model="editModalVisible" :title="editForm.action === 'add' ? '创建实例' : '更新实例'"
+            :mask-closable="false" @on-cancel="closeEditFormModal()" width="760">
             <Form ref="editForm" :model="editForm" :rules="editFormRule" :label-width="100">
                 <Form-item v-if="editForm.action === 'add'" label="名称：" prop="name" :rules="editFormRule.name">
                     <Input v-model.trim="editForm.name"></Input>
@@ -25,13 +19,43 @@
                     <Input v-model.trim="editForm.desc"></Input>
                 </Form-item>
                 <Form-item v-if="editForm.action === 'add'" label="镜像：" prop="image" :rules="editFormRule.image">
-                    <Select v-model="editForm.image">
-                        <Option v-for="item in imageList" :value="item.name+':'+item.tag" :key="item.name+':'+item.tag">{{ item.name }}:{{item.tag}}</Option>
+                    <Select v-model="editForm.image" filterable>
+                        <Option v-for="item in imageList" :value="item.name + ':' + item.tag" :key="item.name + ':' + item.tag">{{
+                            item.name }}:{{ item.tag }}</Option>
                     </Select>
                 </Form-item>
-                <Form-item label="授权秘钥：" prop="authKeys"  :rules="editFormRule.authKeys">
+                <Form-item label="授权秘钥：" prop="authKeys" :rules="editFormRule.authKeys">
                     <Input v-model.trim="editForm.authKeys" type="textarea" :rows="8"></Input>
                 </Form-item>
+                <Form-item v-for="(item, index) in editForm.envs" :prop="'envs.' + index" :rules="editFormRule.envs"
+                    :label="index == 0 ? '环境变量' : ''" :key="index" :show-message="false" style="margin-bottom: 14px;">
+                    <Row v-if="editForm.action === 'add'">
+                        <Col span="6" style="margin-right:8px">
+                            <Input v-model.trim="item.key"></Input>
+                        </Col>
+                        <Col span="6" style="margin-right:8px">
+                            <Input v-model.trim="item.value"></Input>
+                        </Col>
+                        <Col span="1">
+                            <Button @click="onDeleteEnv(index)">删除</Button>
+                        </Col>
+                    </Row>
+                    <Row v-if="editForm.action === 'update'">
+                        <Col span="6" style="margin-right:8px">
+                            <Input v-model.trim="item.key" readonly></Input>
+                        </Col>
+                        <Col span="6" style="margin-right:8px">
+                            <Input v-model.trim="item.value" readonly></Input>
+                        </Col>
+                    </Row>
+                </Form-item>
+                <Form-Item v-if="editForm.action === 'add'">
+                    <Row>
+                        <Col span="10">
+                        <Button type="dashed" long icon="md-add" @click="onAddEnv()">添加环境变量</Button>
+                        </Col>
+                    </Row>
+                </Form-Item>
             </Form>
 
             <div slot="footer">
@@ -39,7 +63,8 @@
                 <Button type="primary" @click="submitEditForm()" :loading="editSubmitBtnLoading">确定</Button>
             </div>
         </Modal>
-        <Modal v-if="imageForm" v-model="imageModalVisible" title="创建镜像" :mask-closable="false" @on-cancel="closeImageFormModal()" width="760">
+        <Modal v-if="imageForm" v-model="imageModalVisible" title="创建镜像" :mask-closable="false"
+            @on-cancel="closeImageFormModal()" width="760">
             <Form ref="imageForm" :model="imageForm" :rules="imageFormRule" :label-width="100">
                 <Form-item label="名称：" prop="name" :rules="imageFormRule.name">
                     <Input v-model.trim="imageForm.name"></Input>
@@ -83,6 +108,7 @@ let defaultForm = {
     desc: "",
     image: "",
     authKeys: "",
+    envs: [],
 };
 
 let defaultImageForm = {
@@ -152,6 +178,16 @@ let addFormRule = {
             trigger: "blur",
         },
     ],
+    envs: [
+        {
+            type: "object",
+            required: false,
+            fields: {
+                key: [{ type: "string", required: true, message: "请填写环境变量名", trigger: "blur" }],
+                value: [{ type: "string", required: true, message: "请填写环境变量值", trigger: "blur" }],
+            }
+        }
+    ],
 };
 
 let editFormRule = {
@@ -170,6 +206,16 @@ let editFormRule = {
             message: "请填写授权秘钥",
             trigger: "blur",
         },
+    ],
+    envs: [
+        {
+            type: "object",
+            required: false,
+            fields: {
+                key: [{ type: "string", required: true, message: "请填写环境变量名", trigger: "blur" }],
+                value: [{ type: "string", required: true, message: "请填写环境变量值", trigger: "blur" }],
+            }
+        }
     ],
 };
 
@@ -345,6 +391,7 @@ export default {
             imageFormRule: imageFormRule,
         };
     },
+
     methods: {
         loadInstanceList(msg = false) {
             getInstanceList()
@@ -387,6 +434,7 @@ export default {
             this.editModalVisible = false;
             this.editFormRule = addFormRule;
         },
+
         submitEditForm() {
             this.editSubmitBtnLoading = true;
             this.$refs["editForm"].validate((valid) => {
@@ -397,6 +445,7 @@ export default {
                         let payload = {
                             desc: data.desc,
                             auth_keys: `${data.authKeys}`.split("\n"),
+                            envs: data.envs,
                         };
                         updateInstance(instanceId, payload)
                             .then((res) => {
@@ -410,11 +459,13 @@ export default {
                                     this.$Message.error(
                                         `更新失败,${res.data.msg}`
                                     );
+                                    this.editSubmitBtnLoading = false;
                                 }
                             })
                             .catch((err) => {
                                 console.log(err);
                                 this.$Message.error(`更新失败,${err}`);
+                                this.editSubmitBtnLoading = false;
                             });
                     } else {
                         let data = nCopy(this.editForm);
@@ -423,6 +474,7 @@ export default {
                             desc: data.desc,
                             image: data.image,
                             auth_keys: `${data.authKeys}`.split("\n"),
+                            envs: data.envs,
                         };
                         addInstance(payload)
                             .then((res) => {
@@ -436,11 +488,13 @@ export default {
                                     this.$Message.error(
                                         `创建失败,${res.data.msg}`
                                     );
+                                    this.editSubmitBtnLoading = false;
                                 }
                             })
                             .catch((err) => {
                                 console.log(err);
                                 this.$Message.error(`创建失败,${err}`);
+                                this.editSubmitBtnLoading = false;
                             });
                     }
                 } else {
@@ -449,6 +503,7 @@ export default {
                 }
             });
         },
+
         openAddModal() {
             this.editFormRule = addFormRule;
             this.$refs["editForm"].resetFields();
@@ -456,17 +511,23 @@ export default {
             this.editSubmitBtnLoading = false;
             this.editModalVisible = true;
         },
+
         openUpdateModal(instanceId) {
             getInstance(instanceId)
                 .then((res) => {
                     this.editFormRule = editFormRule;
                     this.$refs["editForm"].resetFields();
                     let model = res.data.result.model;
+                    if (!model.envs) {
+                        model.envs = []
+                    }
                     this.editForm = nCopy({
                         id: model.id,
                         desc: model.desc,
                         authKeys: model.auth_keys.join("\n"),
+                        envs: model.envs,
                     });
+                    console.log(this.editForm)
                     this.editForm.action = "update";
                     this.editSubmitBtnLoading = false;
                     this.editModalVisible = true;
@@ -476,6 +537,7 @@ export default {
                     this.$Message.error(`加载失败,${err}`);
                 });
         },
+
         onDeleteInstance(instanceId) {
             delInstance(instanceId)
                 .then((res) => {
@@ -492,6 +554,7 @@ export default {
                     this.$Message.error(`释放失败,${err}`);
                 });
         },
+
         onDetailInstance(instanceId) {
             getInstance(instanceId)
                 .then((res) => {
@@ -506,6 +569,7 @@ export default {
                     this.$Message.error(`加载失败,${err}`);
                 });
         },
+
         onActionInstance(instanceId, action) {
             actionInstance(instanceId, action)
                 .then((res) => {
@@ -522,10 +586,24 @@ export default {
                     this.$Message.error(`加载失败,${err}`);
                 });
         },
+
+        onDeleteEnv(index) {
+            this.editForm.envs.splice(index, 1)
+        },
+
+        onAddEnv() {
+            this.editForm.envs.push({
+                key: "",
+                value: "",
+            })
+            console.log(this.editForm)
+        },
+
         closeImageFormModal() {
             this.$refs["imageForm"].resetFields();
             this.imageModalVisible = false;
         },
+
         submitImageForm() {
             this.imageSubmitBtnLoading = true;
             this.$refs["imageForm"].validate((valid) => {
@@ -560,6 +638,7 @@ export default {
                 }
             });
         },
+
         openAddImageModal(instanceId) {
             this.$refs["imageForm"].resetFields();
             let form = nCopy(defaultImageForm);

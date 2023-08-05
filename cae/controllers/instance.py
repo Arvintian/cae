@@ -57,7 +57,11 @@ def info_instance(request: Request, instance_id):
     "name": fields.Str(required=True),
     "desc": fields.Str(required=True),
     "image": fields.Str(required=True),
-    "auth_keys": fields.List(fields.Str, required=True)
+    "auth_keys": fields.List(fields.Str, required=True),
+    "envs": fields.List(fields.Nested({
+        "key": fields.Str(required=True),
+        "value": fields.Str(required=True)
+    }), required=False),
 }, location="json")
 def create_instance(request: Request, json_args: dict):
     if not json_args.get("name") or not json_args.get("image"):
@@ -72,6 +76,7 @@ def create_instance(request: Request, json_args: dict):
             "cae.app": "true",
             "cae.instance": json_args.get("name"),
         },
+        "environment": {item["key"]: item["value"] for item in json_args.get("envs", [])},
         "detach": True,
         "network": config.get("DOCKER_NETWORK"),
         "restart_policy": {
@@ -123,10 +128,12 @@ def update_instance(request: Request, json_args: dict, instance_id):
     model = instance_model.get_instance(instance_id)
     if not model:
         raise Exception("not found instance {}".format(instance_id))
+
     if json_args.get("desc"):
         model.update({
             "desc": json_args.get("desc")
         })
+
     if json_args.get("auth_keys"):
         model.update({
             "auth_keys": json_args.get("auth_keys")

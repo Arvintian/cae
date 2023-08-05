@@ -4,7 +4,7 @@ config = {
     "DEBUG": False,
     "PORT": 5000,
     "WORKERS": env("WORKERS", cast=int, default=2),
-    "REDIS_URL": env("REDIS_URL", cast=str, default="redis://172.17.0.2:6379/0"),
+    "REDIS_URL": env("REDIS_URL", cast=str, default="redis://127.0.0.1:6379/0"),
     "REDIS_KEY_PREFIX":  env("REDIS_KEY_PREFIX", cast=str, default="cae"),
     "DOCKER_CLIENT_ARGS": {
         "base_url": "unix://var/run/docker.sock"
