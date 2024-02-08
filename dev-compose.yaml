@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   api:
-    image: arvintian/cae-api:1.2.0
+    image: arvintian/cae-api:1.2.1
     logging:
       driver: "json-file"
       options:
@@ -10,9 +10,9 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "api_data:/channel"
-      - "/home/arvin/projects/src/github.com/Arvintian/cae:/app"
+      - ".:/app"
     ports:
-      - "0.0.0.0:2222:2222"
+      - "0.0.0.0:3222:2222"
     environment:
       - PORT=5000
       - WORKERS=2
@@ -22,7 +22,7 @@ services:
       - DOCKER_NETWORK_BLOCKS=172.28.2.0/24,172.28.3.0/24
       - SSHD_PORT=2222
     labels:
-      cae.infra: "api"
+      cae.dev.infra: "api"
       traefik.http.routers.cae-api.entrypoints: "cae"
       traefik.http.routers.cae-api.middlewares: "cae-infra-auth"
       traefik.http.routers.cae-api.rule: "PathPrefix(`/api`)"
@@ -30,20 +30,20 @@ services:
       traefik.http.services.cae-api-service.loadbalancer.server.port: 5000
     networks:
       caenet:
-        ipv4_address: 172.28.1.4
+        ipv4_address: 172.28.1.140
     depends_on:
       - redis
     links:
       - redis
   ui:
-    image: arvintian/cae-ui:1.0.1
+    image: arvintian/cae-ui:1.0.3
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
     restart: unless-stopped
     labels:
-      cae.infra: "ui"
+      cae.dev.infra: "ui"
       traefik.http.routers.cae-ui.entrypoints: "cae"
       traefik.http.routers.cae-ui.middlewares: "cae-infra-auth"
       traefik.http.routers.cae-ui.rule: "PathPrefix(`/`)"
@@ -51,11 +51,11 @@ services:
       traefik.http.services.cae-ui-service.loadbalancer.server.port: 80
     networks:
       caenet:
-        ipv4_address: 172.28.1.3
+        ipv4_address: 172.28.1.130
     depends_on:
       - api
   traefik:
-    image: traefik:v2.4.8
+    image: traefik:v2.5.7
     logging:
       driver: "json-file"
       options:
@@ -63,11 +63,21 @@ services:
     restart: unless-stopped
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "traefik_data:/letsencrypt"
     command:
       - --api=true
       - --api.dashboard=true
       - --entrypoints.http80=true
       - --entrypoints.http80.address=:80
+      - --entrypoints.http80.proxyProtocol.trustedIPs=0.0.0.0/0
+      - --entrypoints.http80.forwardedHeaders.trustedIPs=0.0.0.0/0
+      - --entrypoints.https443=true
+      - --entrypoints.https443.address=:443
+      - --entrypoints.https443.proxyProtocol.trustedIPs=0.0.0.0/0
+      - --entrypoints.https443.forwardedHeaders.trustedIPs=0.0.0.0/0
+      - --certificatesresolvers.default.acme.tlschallenge=true
+      - --certificatesresolvers.default.acme.email=hack@arvintian.cn
+      - --certificatesresolvers.default.acme.storage=/letsencrypt/acme.json
       - --entrypoints.cae=true
       - --entrypoints.cae.address=:5000
       - --entrypoints.traefik=true
@@ -77,17 +87,20 @@ services:
       - --accesslog=true
       - --providers.docker=true
       - --providers.docker.endpoint=unix:///var/run/docker.sock
-      - --providers.docker.constraints=LabelRegex(`cae.infra`,`.+`)
+      - --providers.docker.constraints=LabelRegex(`cae.dev.infra`,`.+`)
       - --providers.redis=true
       - --providers.redis.endpoints=redis:6379
       - --providers.redis.rootkey=cae/ingress
     ports:
-      - "0.0.0.0:80:80"
-      - "0.0.0.0:8080:8080"
+      - "0.0.0.0:3080:80"
+      - "0.0.0.0:3443:443"
+      - "0.0.0.0:3880:8080"
       - "0.0.0.0:5000:5000"
     labels:
-      cae.infra: "traefik"
+      cae.dev.infra: "traefik"
       traefik.http.middlewares.cae-infra-auth.basicauth.users: "traefik:$$apr1$$K25PBQJT$$ukKUrPk9K0gsRjS83Xv5J0"
+      traefik.http.middlewares.https-redirect.redirectscheme.scheme: "https"
+      traefik.http.middlewares.https-redirect.redirectscheme.permanent: "true"
       traefik.http.routers.traefik-api.entrypoints: "traefik"
       traefik.http.routers.traefik-api.middlewares: "cae-infra-auth"
       traefik.http.routers.traefik-api.rule: "PathPrefix(`/api`)"
@@ -98,7 +111,7 @@ services:
       traefik.http.routers.traefik-dashboard.service: "dashboard@internal"
     networks:
       caenet:
-        ipv4_address: 172.28.1.2
+        ipv4_address: 172.28.1.120
     depends_on:
       - api
     links:
@@ -112,17 +125,22 @@ services:
     restart: unless-stopped
     networks:
       caenet:
-        ipv4_address: 172.28.1.1
+        ipv4_address: 172.28.1.110
     volumes:
       - "redis_data:/data"
 volumes:
   api_data:
-    name: cae_api_data
+    name: dev_cae_api_data
     driver: local
     labels:
       cae.infra: "volume"
   redis_data:
-    name: cae_redis_data
+    name: dev_cae_redis_data
+    driver: local
+    labels:
+      cae.infra: "volume"
+  traefik_data:
+    name: dev_cae_traefik_data
     driver: local
     labels:
       cae.infra: "volume"

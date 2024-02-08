@@ -23,9 +23,9 @@ class SSHServer:
     @staticmethod
     def gen_host_key():
         ssh_private_key, ssh_public_key = ssh_key_gen()
-        with open(config["HOST_PRIVATE_KEY"], 'w') as f:
+        with open(config["HOST_PRIVATE_KEY"], 'w', encoding="utf-8") as f:
             f.write(ssh_private_key)
-        with open(config["HOST_PUBLIC_KEY"], "w") as f:
+        with open(config["HOST_PUBLIC_KEY"], "w", encoding="utf-8") as f:
             f.write(ssh_public_key)
 
     def run(self):

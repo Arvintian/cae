@@ -62,6 +62,7 @@ services:
     restart: unless-stopped
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "traefik_data:/letsencrypt"
     command:
       - --api=true
       - --api.dashboard=true
@@ -69,6 +70,13 @@ services:
       - --entrypoints.http80.address=:80
       - --entrypoints.http80.proxyProtocol.trustedIPs=0.0.0.0/0
       - --entrypoints.http80.forwardedHeaders.trustedIPs=0.0.0.0/0
+      - --entrypoints.https443=true
+      - --entrypoints.https443.address=:443
+      - --entrypoints.https443.proxyProtocol.trustedIPs=0.0.0.0/0
+      - --entrypoints.https443.forwardedHeaders.trustedIPs=0.0.0.0/0
+      - --certificatesresolvers.default.acme.tlschallenge=true
+      - --certificatesresolvers.default.acme.email=email@example.com
+      - --certificatesresolvers.default.acme.storage=/letsencrypt/acme.json
       - --log=true
       - --log.level=info
       - --accesslog=true
@@ -80,9 +88,12 @@ services:
       - --providers.redis.rootkey=cae/ingress
     ports:
       - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     labels:
       cae.infra: "traefik"
       traefik.http.middlewares.cae-infra-auth.basicauth.users: "traefik:$$apr1$$K25PBQJT$$ukKUrPk9K0gsRjS83Xv5J0"
+      traefik.http.middlewares.https-redirect.redirectscheme.scheme: "https"
+      traefik.http.middlewares.https-redirect.redirectscheme.permanent: "true"
       traefik.http.routers.traefik-api.entrypoints: "http80"
       traefik.http.routers.traefik-api.middlewares: "cae-infra-auth"
       traefik.http.routers.traefik-api.rule: "Host(`traefik.yourdomain.com`)&&PathPrefix(`/api`)"
@@ -119,6 +130,11 @@ volumes:
       cae.infra: "volume"
   redis_data:
     name: cae_redis_data
+    driver: local
+    labels:
+      cae.infra: "volume"
+  traefik_data:
+    name: cae_traefik_data
     driver: local
     labels:
       cae.infra: "volume"

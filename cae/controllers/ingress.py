@@ -4,6 +4,7 @@ from cae.repositorys.validation import use_args
 from cae.models import ingress, redis_client
 from cae.config import config
 from webargs import fields
+import copy
 
 bp_ingress = Blueprint("bp_ingress")
 
@@ -91,7 +92,9 @@ def service_del(request: Request, view_args, service_name):
 @use_args({
     "name": fields.Str(required=True),
     "rule": fields.Str(required=True),
-    "service": fields.Str(required=True)
+    "service": fields.Str(required=True),
+    "ssl_domain": fields.Str(required=False, default=""),
+    "ssl_redirect": fields.Bool(required=False, default=False)
 }, location="json")
 def apply_router(request: Request, json_args: dict):
     spec = {}
@@ -108,6 +111,18 @@ def apply_router(request: Request, json_args: dict):
         "rule": json_args.get("rule")
     })
     # apply
+    if json_args.get("ssl_domain"):
+        ssl_spec = copy.deepcopy(spec)
+        ssl_spec.update({
+            "ssl_domain": json_args.get("ssl_domain")
+        })
+        ingress.apply_router("{}-ssl".format(name), ssl_spec)
+    else:
+        ingress.delete_router("{}-ssl".format(name))
+    if json_args.get("ssl_domain") and json_args.get("ssl_redirect"):
+        spec.update({
+            "ssl_redirect": True
+        })
     ingress.apply_router(name, spec)
     return {
         "code": 200,
@@ -134,7 +149,9 @@ def fetch_router(request: Request, view_args: dict, router_name=None):
         cursor, key_list = redis_client.scan(0, key_match)
         for key in [x.decode() for x in key_list]:
             # cae/ingress/http/routers/<router_name>/rule
-            router_name = key.split("/")[-2]
+            router_name: str = key.split("/")[-2]
+            if router_name.endswith("-ssl"):
+                continue
             spec = ingress.get_router_info(router_name)
             result.append({
                 "name": router_name,
@@ -143,8 +160,9 @@ def fetch_router(request: Request, view_args: dict, router_name=None):
         while cursor != 0:
             cursor, key_list = redis_client.scan(cursor, key_match)
             for key in [x.decode() for x in key_list]:
-                # cae/ingress/http/routers/<router_name>/rule
                 router_name = key.split("/")[-2]
+                if router_name.endswith("-ssl"):
+                    continue
                 spec = ingress.get_router_info(router_name)
                 result.append({
                     "name": router_name,
@@ -160,6 +178,7 @@ def fetch_router(request: Request, view_args: dict, router_name=None):
 @use_args({"router_name": fields.Str(required=True)}, location="view_args")
 def router_del(request: Request, view_args: dict, router_name: str):
     ingress.delete_router(router_name)
+    ingress.delete_router("{}-ssl".format(router_name))
     return {
         "code": 200,
         "result": "success"
